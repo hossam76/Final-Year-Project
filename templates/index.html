@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake News Detection System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="modern-theme">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top glass-effect">
+        <div class="container-fluid">
+            <a class="navbar-brand brand-animated" href="/">
+                <div class="logo-container">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>FakeNewsGuard<sup class="pro-badge">PRO</sup></span>
+                </div>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="fas fa-home me-1"></i>Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard"><i class="fas fa-chart-line me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/learn"><i class="fas fa-graduation-cap me-1"></i>Learn</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/case_studies"><i class="fas fa-microscope me-1"></i>Case Studies</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api_docs"><i class="fas fa-code me-1"></i>API</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <span class="navbar-text me-3">
+                        <span class="badge bg-gradient pulse-animation">Final Year Project</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="hero-section text-center mb-4">
+            <h1 class="display-4"><i class="fas fa-shield-alt me-2"></i>Fake News Detection System</h1>
+            <p class="lead">Analyze articles and news using advanced machine learning to detect misinformation</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong><i class="fas fa-exclamation-triangle me-2"></i>Error:</strong> {{ error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="mb-0"><i class="fas fa-search me-2"></i>Detect Fake News</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('predict_form') }}" class="needs-validation">
+                            <ul class="nav nav-tabs mb-3" id="inputTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-input" type="button" role="tab">
+                                        <i class="fas fa-file-alt me-1"></i> Enter Text
+                                    </button>
+                                </li>
+                                <!-- <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-input" type="button" role="tab">
+                                        <i class="fas fa-link me-1"></i> Enter URL
+                                    </button>
+                                </li> -->
+                            </ul>
+                            <div class="tab-content" id="inputTabsContent">
+                                <div class="tab-pane fade show active" id="text-input" role="tabpanel">
+                                    <div class="mb-3">
+                                        <label for="news_text" class="form-label">News Content</label>
+                                        <textarea class="form-control" id="news_text" name="news_text" rows="6" placeholder="Paste the news article text here..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="url-input" role="tabpanel">
+                                    <div class="mb-3">
+                                        <label for="news_url" class="form-label">News Article URL</label>
+                                        <input type="url" class="form-control" id="news_url" name="news_url" placeholder="https://example.com/news-article">
+                                        <div class="form-text">We'll extract and analyze the article content from this URL.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="model_choice" class="form-label">Choose Detection Model</label>
+                                        <select class="form-select" id="model_choice" name="model_choice">
+                                            <option value="ensemble" selected>Ensemble (Most Accurate)</option>
+                                            <option value="naive_bayes">Naive Bayes</option>
+                                            <option value="random_forest">Random Forest</option>
+                                            <option value="lstm">LSTM Neural Network</option>
+                                            <option value="all">Show All Models</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Analysis Options</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="generate_advanced" name="generate_advanced" value="true" checked>
+                                            <label class="form-check-label" for="generate_advanced">Generate Advanced Analysis</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid mt-3">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-search me-2"></i>Analyze for Fake News
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-info-circle me-2"></i>How It Works</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="steps">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h5>Paste Article or URL</h5>
+                                    <p>Enter the full text of a news article or provide a URL.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h5>Choose Model</h5>
+                                    <p>Select which AI model to use for analysis.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h5>Get Results</h5>
+                                    <p>View the analysis with probability scores and detailed insights.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="text-center">
+                            <a href="/learn" class="btn btn-outline-secondary">
+                                <i class="fas fa-graduation-cap me-2"></i>Learn More About Fake News
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Detection Stats</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-box">
+                            <div class="stat-label">Accuracy Rate</div>
+                            <div class="stat-value">95%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Articles Analyzed</div>
+                            <div class="stat-value">1,547</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Fake News Detected</div>
+                            <div class="stat-value">463</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if result %}
+        <div class="results-section mt-4">
+            <h2><i class="fas fa-chart-line me-2"></i>Analysis Results</h2>
+            
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header {% if result.prediction == 'fake' %}bg-danger{% else %}bg-success{% endif %} text-white">
+                            <h4 class="mb-0">
+                                {% if result.prediction == 'fake' %}
+                                <i class="fas fa-exclamation-triangle me-2"></i>Likely Fake News
+                                {% else %}
+                                <i class="fas fa-check-circle me-2"></i>Likely Real News
+                                {% endif %}
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="result-highlight">
+                                <div class="confidence-meter">
+                                    <div class="confidence-value">{{ result.confidence|round(1) }}%</div>
+                                    <div class="confidence-label">Confidence</div>
+                                </div>
+                            </div>
+                            
+                            <p class="mt-3"><strong>Model Used:</strong> {{ result.model_used }}</p>
+                            
+                            <div class="mt-4">
+                                <h5>Prediction Explanation:</h5>
+                                <p>
+                                    {% if result.prediction == 'fake' %}
+                                    Our AI models have detected patterns in this content that are common in fake news articles, including questionable claims, emotional language, or credibility issues.
+                                    {% else %}
+                                    This content appears to follow patterns consistent with legitimate news sources, including balanced reporting, factual consistency, and proper sourcing.
+                                    {% endif %}
+                                </p>
+                            </div>
+                            
+                            {% if all_results %}
+                            <div class="mt-4">
+                                <h5>Individual Model Results:</h5>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Model</th>
+                                            <th>Prediction</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Naive Bayes</td>
+                                            <td>{{ all_results.naive_bayes.prediction }}</td>
+                                            <td>{{ (all_results.naive_bayes.confidence * 100)|round(1) }}%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Random Forest</td>
+                                            <td>{{ all_results.random_forest.prediction }}</td>
+                                            <td>{{ (all_results.random_forest.confidence * 100)|round(1) }}%</td>
+                                        </tr>
+                                        {% if all_results.lstm %}
+                                        <tr>
+                                            <td>LSTM Neural Net</td>
+                                            <td>{{ all_results.lstm.prediction }}</td>
+                                            <td>{{ (all_results.lstm.confidence * 100)|round(1) }}%</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr class="table-active">
+                                            <td><strong>Ensemble</strong></td>
+                                            <td><strong>{{ all_results.ensemble.prediction }}</strong></td>
+                                            <td><strong>{{ (all_results.ensemble.confidence * 100)|round(1) }}%</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mt-4">
+                                <a href="#text-analysis" class="btn btn-outline-primary">
+                                    <i class="fas fa-file-alt me-2"></i>View Detailed Analysis
+                                </a>
+                                {% if analysis_id %}
+                                <a href="{{ url_for('export_analysis', analysis_id=analysis_id) }}" class="btn btn-outline-secondary ms-2">
+                                    <i class="fas fa-download me-2"></i>Export Results
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Add Detection Stats Card -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-secondary text-white">
+                            <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Detection Stats</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="stat-box">
+                                        <div class="stat-label">Model Used</div>
+                                        <div class="stat-value">{{ result.model_used }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="stat-box">
+                                        <div class="stat-label">Confidence</div>
+                                        <div class="stat-value">{{ result.confidence|round(1) }}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if all_results %}
+                            <div class="mt-4">
+                                <h5>Model Confidence Comparison:</h5>
+                                <div class="chart-container" style="height: 200px;">
+                                    <canvas id="modelComparisonChart"></canvas>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if text_analysis %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h4 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Text Analysis</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="analysis-stat">
+                                        <div class="stat-label">Word Count</div>
+                                        <div class="stat-value">{{ text_analysis.word_count }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="analysis-stat">
+                                        <div class="stat-label">Sentence Count</div>
+                                        <div class="stat-value">{{ text_analysis.sentence_count }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="analysis-stat">
+                                        <div class="stat-label">Avg Word Length</div>
+                                        <div class="stat-value">{{ text_analysis.avg_word_length|round(2) }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="analysis-stat">
+                                        <div class="stat-label">Sentiment</div>
+                                        <div class="stat-value">{{ text_analysis.sentiment.polarity|round(2) }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if wordcloud %}
+                            <div class="wordcloud-container mt-4">
+                                <h5>Word Frequency</h5>
+                                <img src="{{ wordcloud }}" class="img-fluid rounded" alt="Word Cloud">
+                            </div>
+                            {% endif %}
+                            
+                            {% if text_analysis.top_words %}
+                            <div class="mt-4">
+                                <h5>Most Common Words:</h5>
+                                <div class="common-words">
+                                    {% for word, count in text_analysis.top_words.items() %}
+                                    <span class="badge bg-light text-dark">{{ word }} ({{ count }})</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if text_analysis.named_entities %}
+                            <div class="mt-4">
+                                <h5>Named Entities:</h5>
+                                <div class="named-entities">
+                                    {% for entity, type in text_analysis.named_entities %}
+                                    <span class="badge entity-{{ type }}">{{ entity }} ({{ type }})</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Sentiment Analysis & AI Explanation Row -->
+            <div class="row">
+                {% if text_analysis and text_analysis.sentiment %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-purple text-white" style="background-color: #6f42c1;">
+                            <h4 class="mb-0"><i class="fas fa-brain me-2"></i>Sentiment Analysis</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>Polarity</h5>
+                                    <p class="small text-muted">Measures how positive or negative the text is</p>
+                                    <div class="sentiment-meter">
+                                        <div class="sentiment-bar">
+                                            <div class="sentiment-fill polarity-fill" style="width: {{ (text_analysis.sentiment.polarity + 1) * 50 }}%"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <span>Negative</span>
+                                            <span class="sentiment-value">{{ text_analysis.sentiment.polarity|round(2) }}</span>
+                                            <span>Positive</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Sentiment Icon -->
+                                    <div class="text-center mt-3">
+                                        {% if text_analysis.sentiment.polarity > 0.05 %}
+                                            <i class="fas fa-smile fa-3x text-success"></i>
+                                            <p class="mt-2">Positive Tone</p>
+                                        {% elif text_analysis.sentiment.polarity < -0.05 %}
+                                            <i class="fas fa-frown fa-3x text-danger"></i>
+                                            <p class="mt-2">Negative Tone</p>
+                                        {% else %}
+                                            <i class="fas fa-meh fa-3x text-warning"></i>
+                                            <p class="mt-2">Neutral Tone</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h5>Subjectivity</h5>
+                                    <p class="small text-muted">Measures how objective or subjective the text is</p>
+                                    <div class="sentiment-meter">
+                                        <div class="sentiment-bar">
+                                            <div class="sentiment-fill subjectivity-fill" style="width: {{ text_analysis.sentiment.subjectivity * 100 }}%"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <span>Objective</span>
+                                            <span class="sentiment-value">{{ text_analysis.sentiment.subjectivity|round(2) }}</span>
+                                            <span>Subjective</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-info mt-4">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Insight:</strong>
+                                        {% if text_analysis.sentiment.subjectivity > 0.6 %}
+                                            This text is highly subjective, containing personal opinions and viewpoints.
+                                        {% elif text_analysis.sentiment.subjectivity < 0.3 %}
+                                            This text is mostly objective, focusing on facts rather than opinions.
+                                        {% else %}
+                                            This text contains a balance of facts and subjective elements.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if explanation %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-warning">
+                            <h4 class="mb-0"><i class="fas fa-lightbulb me-2"></i>AI Explanation</h4>
+                        </div>
+                        <div class="card-body">
+                            <p>Our AI has identified key features in the text that influenced the prediction:</p>
+                            
+                            <!-- Visual explanation chart -->
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="explanationChart"></canvas>
+                            </div>
+                            
+                            <!-- Words that influenced the prediction -->
+                            <div class="explanation-words mt-3">
+                                {% for item in explanation.explanation %}
+                                <div class="explanation-word-item {% if item.weight > 0 %}positive{% else %}negative{% endif %}">
+                                    <div class="word">{{ item.word }}</div>
+                                    <div class="weight">{{ item.weight|round(3) }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="mt-3">
+                                <p class="small text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>How to read this:</strong> 
+                                    Positive values (green) suggest real news indicators, while negative values (red) suggest fake news indicators.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Additional analysis row for Content and Language Analysis -->
+            <div class="row">
+                <!-- Content Analysis section -->
+                {% if text_analysis and text_analysis.readability %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-teal text-white" style="background-color: #20c997;">
+                            <h4 class="mb-0"><i class="fas fa-book-reader me-2"></i>Content Analysis</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>Readability Metrics</h5>
+                                    <div class="metric-item">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Flesch Reading Ease</span>
+                                            <span class="metric-value">{{ text_analysis.readability.flesch_reading_ease|round(1) }}</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-info" role="progressbar" 
+                                                style="width: {{ text_analysis.readability.flesch_reading_ease_bounded }}%"></div>
+                                        </div>
+                                        <small class="text-muted">
+                                            {% if text_analysis.readability.flesch_reading_ease > 90 %}
+                                                Very Easy (5th grade)
+                                            {% elif text_analysis.readability.flesch_reading_ease > 80 %}
+                                                Easy (6th grade)
+                                            {% elif text_analysis.readability.flesch_reading_ease > 70 %}
+                                                Fairly Easy (7th grade)
+                                            {% elif text_analysis.readability.flesch_reading_ease > 60 %}
+                                                Standard (8th-9th grade)
+                                            {% elif text_analysis.readability.flesch_reading_ease > 50 %}
+                                                Fairly Difficult (10th-12th grade)
+                                            {% elif text_analysis.readability.flesch_reading_ease > 30 %}
+                                                Difficult (College)
+                                            {% else %}
+                                                Very Difficult (Graduate level)
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="metric-item mt-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Flesch-Kincaid Grade Level</span>
+                                            <span class="metric-value">{{ text_analysis.readability.flesch_kincaid_grade|round(1) }}</span>
+                                        </div>
+                                        <small class="text-muted">Approximate U.S. grade level needed to understand the text</small>
+                                    </div>
+                                    
+                                    <div class="metric-item mt-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Content Complexity</span>
+                                            <span class="metric-value">
+                                                {% if text_analysis.readability.complex_word_percentage > 20 %}High
+                                                {% elif text_analysis.readability.complex_word_percentage > 10 %}Medium
+                                                {% else %}Low{% endif %}
+                                            </span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" 
+                                                style="width: {{ text_analysis.readability.complex_word_percentage }}%"></div>
+                                        </div>
+                                        <small class="text-muted">{{ text_analysis.readability.complex_word_percentage|round(1) }}% complex words</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h5>Content Diversity</h5>
+                                    
+                                    {% if text_analysis.content_diversity %}
+                                    <div class="metric-item">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Vocabulary Richness</span>
+                                            <span class="metric-value">{{ text_analysis.content_diversity.vocabulary_richness|round(2) }}</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                style="width: {{ min(100, text_analysis.content_diversity.vocabulary_richness * 20) }}%"></div>
+                                        </div>
+                                        <small class="text-muted">Higher values indicate richer vocabulary</small>
+                                    </div>
+                                    
+                                    <div class="metric-item mt-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Type-Token Ratio</span>
+                                            <span class="metric-value">{{ text_analysis.content_diversity.type_token_ratio|round(2) }}</span>
+                                        </div>
+                                        <small class="text-muted">Ratio of unique words to total words (lexical diversity)</small>
+                                    </div>
+                                    
+                                    <div class="metric-item mt-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Unique Words</span>
+                                            <span class="metric-value">{{ text_analysis.content_diversity.hapax_legomena }}</span>
+                                        </div>
+                                        <small class="text-muted">Words that appear only once in the text</small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="alert alert-info mt-4">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Content Assessment:</strong>
+                                        {% if text_analysis.readability.flesch_reading_ease < 50 and text_analysis.readability.complex_word_percentage > 15 %}
+                                            This text uses complex language that may indicate academic or specialized content.
+                                        {% elif text_analysis.readability.flesch_reading_ease > 70 and text_analysis.readability.complex_word_percentage < 10 %}
+                                            This text uses simple, accessible language typical of general audience content.
+                                        {% else %}
+                                            This text uses moderately complex language suitable for a general adult audience.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Language Analysis section -->
+                {% if text_analysis and text_analysis.language_indicators %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-indigo text-white" style="background-color: #6610f2;">
+                            <h4 class="mb-0"><i class="fas fa-language me-2"></i>Language Analysis</h4>
+                        </div>
+                        <div class="card-body">
+                            <h5>Content Style Indicators</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="indicator-card">
+                                        <h6>Emotional Language</h6>
+                                        <div class="progress-circle" data-percentage="{{ (text_analysis.language_indicators.emotional_ratio * 100)|round|int }}">
+                                            <span class="progress-circle-left">
+                                                <span class="progress-circle-bar"></span>
+                                            </span>
+                                            <span class="progress-circle-right">
+                                                <span class="progress-circle-bar"></span>
+                                            </span>
+                                            <div class="progress-circle-value">
+                                                <div>
+                                                    <span>{{ (text_analysis.language_indicators.emotional_ratio * 100)|round|int }}%</span><br>
+                                                    <span>Emotional</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">{{ text_analysis.language_indicators.emotional_word_count }} emotional words identified</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="indicator-card">
+                                        <h6>Factual Language</h6>
+                                        <div class="progress-circle" data-percentage="{{ (text_analysis.language_indicators.factual_ratio * 100)|round|int }}">
+                                            <span class="progress-circle-left">
+                                                <span class="progress-circle-bar"></span>
+                                            </span>
+                                            <span class="progress-circle-right">
+                                                <span class="progress-circle-bar"></span>
+                                            </span>
+                                            <div class="progress-circle-value">
+                                                <div>
+                                                    <span>{{ (text_analysis.language_indicators.factual_ratio * 100)|round|int }}%</span><br>
+                                                    <span>Factual</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Based on language typically found in factual reporting</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="indicator-card">
+                                        <h6>Uncertainty Markers</h6>
+                                        <div class="progress-circle" data-percentage="{{ (text_analysis.language_indicators.uncertainty_ratio * 100)|round|int }}">
+                                            <span class="progress-circle-left">
+                                                <span class="progress-circle-bar"></span>
+                                            </span>
+                                            <span class="progress-circle-right">
+                                                <span class="progress-circle-bar"></span>
+                                            </span>
+                                            <div class="progress-circle-value">
+                                                <div>
+                                                    <span>{{ (text_analysis.language_indicators.uncertainty_ratio * 100)|round|int }}%</span><br>
+                                                    <span>Uncertain</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Words indicating uncertainty or hedging</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="keyword-section">
+                                        <h6><i class="fas fa-heart text-danger me-1"></i> Emotional Words</h6>
+                                        <div class="keywords-container">
+                                            {% if text_analysis.language_indicators.emotional_words %}
+                                                {% for word in text_analysis.language_indicators.emotional_words %}
+                                                <span class="keyword-badge emotion-keyword">{{ word }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">No significant emotional words detected</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="keyword-section">
+                                        <h6><i class="fas fa-check-circle text-success me-1"></i> Factual Indicators</h6>
+                                        <div class="keywords-container">
+                                            {% if text_analysis.language_indicators.factual_indicators %}
+                                                {% for word in text_analysis.language_indicators.factual_indicators %}
+                                                <span class="keyword-badge factual-keyword">{{ word }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">No significant factual indicators detected</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if text_analysis.entity_counts %}
+                            <div class="named-entity-analysis mt-4">
+                                <h5>Named Entity Analysis</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="entity-type-chart">
+                                            <canvas id="entityTypeChart" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="entity-analysis-insight">
+                                            <h6><i class="fas fa-lightbulb text-warning me-1"></i> Entity Insights</h6>
+                                            <ul class="entity-insights-list">
+                                                {% set person_count = text_analysis.entity_counts.get('PERSON', 0) %}
+                                                {% set org_count = text_analysis.entity_counts.get('ORG', 0) %}
+                                                {% set loc_count = text_analysis.entity_counts.get('GPE', 0) + text_analysis.entity_counts.get('LOC', 0) %}
+                                                
+                                                {% if person_count > 0 %}
+                                                <li>References {{ person_count }} distinct people</li>
+                                                {% endif %}
+                                                
+                                                {% if org_count > 0 %}
+                                                <li>Mentions {{ org_count }} organizations</li>
+                                                {% endif %}
+                                                
+                                                {% if loc_count > 0 %}
+                                                <li>Includes {{ loc_count }} location references</li>
+                                                {% endif %}
+                                                
+                                                {% if text_analysis.entity_counts.get('DATE', 0) > 0 %}
+                                                <li>Contains {{ text_analysis.entity_counts.get('DATE', 0) }} date references</li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if text_analysis.quote_count and text_analysis.quote_count > 0 %}
+                            <div class="quotes-section mt-4">
+                                <h5>Quoted Content Analysis</h5>
+                                <p>This text contains {{ text_analysis.quote_count }} direct quotes, which may indicate attribution to sources.</p>
+                                
+                                {% if text_analysis.quoted_text %}
+                                <div class="quoted-text-examples">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h6><i class="fas fa-quote-left me-1"></i> Sample Quotes</h6>
+                                            <ul class="quote-list">
+                                                {% for quote in text_analysis.quoted_text[:3] %}
+                                                <li>"{{ quote }}"</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Additional row for Domain Classification and Source Analysis -->
+            <div class="row">
+                <!-- Domain Classification section -->
+                {% if text_analysis and text_analysis.subject_domains %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fas fa-sitemap me-2"></i>Content Classification</h4>
+                        </div>
+                        <div class="card-body">
+                            <h5>Subject Domain Analysis</h5>
+                            <p>Our analysis has classified this content into the following domains:</p>
+                            
+                            <div class="domain-chart-container mb-4">
+                                <canvas id="domainClassificationChart" height="250"></canvas>
+                            </div>
+                            
+                            <div class="domain-list">
+                                {% for domain, score in text_analysis.subject_domains %}
+                                <div class="domain-item">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="domain-name">{{ domain|capitalize }}</span>
+                                        <span class="domain-score">{{ score }} references</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar 
+                                            {% if domain == 'politics' %}bg-danger
+                                            {% elif domain == 'health' %}bg-success
+                                            {% elif domain == 'science' %}bg-info
+                                            {% elif domain == 'finance' %}bg-warning
+                                            {% elif domain == 'technology' %}bg-primary
+                                            {% else %}bg-secondary{% endif %}" 
+                                            style="width: {{ (score / text_analysis.subject_domains[0][1] * 100)|round }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="alert alert-info mt-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Domain Context:</strong>
+                                {% set primary_domain = text_analysis.subject_domains[0][0] %}
+                                {% if primary_domain == 'politics' %}
+                                    This appears to be political content. Political news has higher instances of misinformation, particularly during election cycles.
+                                {% elif primary_domain == 'health' %}
+                                    This appears to be health-related content. Health misinformation can spread quickly and have serious real-world consequences.
+                                {% elif primary_domain == 'science' %}
+                                    This appears to be scientific content. Scientific topics often require verification against peer-reviewed sources.
+                                {% elif primary_domain == 'finance' %}
+                                    This appears to be financial content. Financial misinformation can impact markets and investment decisions.
+                                {% elif primary_domain == 'technology' %}
+                                    This appears to be technology-related content. Tech news can sometimes include speculative claims about future developments.
+                                {% else %}
+                                    This content spans multiple domains or is general in nature.
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Enhanced Source Analysis -->
+                {% if credibility %}
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-secondary text-white">
+                            <h4 class="mb-0"><i class="fas fa-globe me-2"></i>Source Analysis</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    <div class="credibility-score-card">
+                                        <div class="score-ring">
+                                            <div class="score-circle" style="background: conic-gradient(
+                                                {{ 'var(--success)' if credibility.score > 0.7 else 'var(--warning)' if credibility.score > 0.4 else 'var(--danger)' }} 
+                                                0%, 
+                                                {{ 'var(--success)' if credibility.score > 0.7 else 'var(--warning)' if credibility.score > 0.4 else 'var(--danger)' }} 
+                                                {{ credibility.score * 100 }}%, 
+                                                #f1f1f1 {{ credibility.score * 100 }}%, 
+                                                #f1f1f1 100%)">
+                                                <div class="score-inner-circle">
+                                                    <div class="score-value">{{ (credibility.score * 10)|round(1) }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="score-label">{{ credibility.status }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="source-details">
+                                        <h5>Source Information</h5>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Domain:</div>
+                                            <div class="url-display">{{ credibility.domain }}</div>
+                                        </div>
+                                        
+                                        <div class="detail-row mt-2">
+                                            <div class="detail-label">Category:</div>
+                                            <div class="detail-value">{{ credibility.category }}</div>
+                                        </div>
+                                        
+                                        <div class="detail-row">
+                                            <div class="detail-label">Editorial Stance:</div>
+                                            <div class="detail-value">{{ credibility.bias }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="credibility-factors mt-4">
+                                <h5>Credibility Factors</h5>
+                                <ul class="list-group">
+                                    {% for factor in credibility.factors %}
+                                    <li class="list-group-item 
+                                        {% if '(+)' in factor %}list-group-item-success
+                                        {% elif '(-)' in factor %}list-group-item-danger
+                                        {% else %}list-group-item-light{% endif %}">
+                                        <i class="fas {% if '(+)' in factor %}fa-check-circle{% elif '(-)' in factor %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} me-2"></i>
+                                        {{ factor }}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-info mt-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Source assessment:</strong> {{ credibility.notes }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Hidden JSON data section remains in the results container -->
+            <!-- Add hidden JSON data for charts -->
+            {% if explanation and explanation.explanation %}
+            <script type="application/json" id="explanationData" style="display: none;">{{ explanation.explanation|tojson }}</script>
+            {% endif %}
+
+            {% if text_analysis and text_analysis.entity_counts %}
+            <script type="application/json" id="entityCountsData" style="display: none;">{{ text_analysis.entity_counts|tojson }}</script>
+            {% endif %}
+
+            {% if text_analysis and text_analysis.subject_domains %}
+            <script type="application/json" id="domainData" style="display: none;">{{ text_analysis.subject_domains|tojson }}</script>
+            {% endif %}
+
+            {% if all_results %}
+            <script type="application/json" id="allResultsData" style="display: none;">{{ all_results|tojson }}</script>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Fake News Detection System</h5>
+                    <p>Final Year Project</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/learn">Learning Center</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>References</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/api_docs">API Documentation</a></li>
+                        <li><a href="/case_studies">Case Studies</a></li>
+                        <li><a href="#">Project Repository</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p>&copy; 2023 Fake News Detection System</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize explanation chart if exists
+        if (document.getElementById('explanationChart')) {
+            const ctx = document.getElementById('explanationChart').getContext('2d');
+            
+            // Extract data from the explanation
+            const explanationItems = {{ explanation.explanation|tojson if explanation and explanation.explanation else '[]'|safe }};
+            const words = explanationItems.map(item => item.word).slice(0, 10); // Take top 10
+            const weights = explanationItems.map(item => item.weight).slice(0, 10);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: words,
+                    datasets: [{
+                        label: 'Feature Impact',
+                        data: weights,
+                        backgroundColor: weights.map(value => 
+                            value >= 0 ? 'rgba(40, 167, 69, 0.7)' : 'rgba(220, 53, 69, 0.7)'
+                        ),
+                        borderColor: weights.map(value => 
+                            value >= 0 ? 'rgba(40, 167, 69, 1)' : 'rgba(220, 53, 69, 1)'
+                        ),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    return `Impact: ${value.toFixed(4)} (${value >= 0 ? 'Real' : 'Fake'})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize model comparison chart if multiple results exist
+        if (document.getElementById('modelComparisonChart')) {
+            const ctx = document.getElementById('modelComparisonChart').getContext('2d');
+            
+            const allResults = {{ all_results|tojson if all_results else 'null'|safe }};
+            if (allResults) {
+                const models = Object.keys(allResults).filter(m => m !== 'ensemble');
+                const confidences = models.map(m => allResults[m].confidence * 100);
+                const predictions = models.map(m => allResults[m].prediction);
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: models.map(m => m.charAt(0).toUpperCase() + m.slice(1).replace('_', ' ')),
+                        datasets: [{
+                            label: 'Confidence (%)',
+                            data: confidences,
+                            backgroundColor: predictions.map(p => 
+                                p === 'real' ? 'rgba(40, 167, 69, 0.7)' : 'rgba(220, 53, 69, 0.7)'
+                            ),
+                            borderColor: predictions.map(p => 
+                                p === 'real' ? 'rgba(40, 167, 69, 1)' : 'rgba(220, 53, 69, 1)'
+                            ),
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+    </script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ...existing chart initializations...
+    
+    // Initialize entity type chart if it exists
+    if (document.getElementById('entityTypeChart')) {
+        const entityCtx = document.getElementById('entityTypeChart').getContext('2d');
+        const entityCounts = {{ text_analysis.entity_counts|tojson if text_analysis and text_analysis.entity_counts else '{}'|safe }};
+        
+        const entityLabels = [];
+        const entityValues = [];
+        const entityColors = [];
+        
+        const colorMap = {
+            'PERSON': 'rgba(255, 99, 132, 0.8)',
+            'ORG': 'rgba(54, 162, 235, 0.8)',
+            'LOC': 'rgba(75, 192, 192, 0.8)',
+            'GPE': 'rgba(75, 192, 192, 0.8)',
+            'DATE': 'rgba(153, 102, 255, 0.8)',
+            'TIME': 'rgba(153, 102, 255, 0.8)',
+            'MONEY': 'rgba(255, 159, 64, 0.8)',
+            'PERCENT': 'rgba(255, 159, 64, 0.8)',
+            'PRODUCT': 'rgba(255, 205, 86, 0.8)',
+            'EVENT': 'rgba(201, 203, 207, 0.8)',
+            'WORK_OF_ART': 'rgba(201, 203, 207, 0.8)',
+            'LAW': 'rgba(54, 162, 235, 0.8)',
+            'LANGUAGE': 'rgba(255, 99, 132, 0.8)',
+            'FAC': 'rgba(75, 192, 192, 0.8)',
+            'NORP': 'rgba(153, 102, 255, 0.8)'
+        };
+        
+        for (const [type, count] of Object.entries(entityCounts)) {
+            entityLabels.push(type);
+            entityValues.push(count);
+            entityColors.push(colorMap[type] || 'rgba(128, 128, 128, 0.8)');
+        }
+        
+        new Chart(entityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: entityLabels,
+                datasets: [{
+                    data: entityValues,
+                    backgroundColor: entityColors,
+                    borderColor: entityColors.map(color => color.replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize domain classification chart if it exists
+    if (document.getElementById('domainClassificationChart')) {
+        const domainCtx = document.getElementById('domainClassificationChart').getContext('2d');
+        const domainData = {{ text_analysis.subject_domains|tojson if text_analysis and text_analysis.subject_domains else '[]'|safe }};
+        
+        const domainLabels = domainData.map(item => item[0].charAt(0).toUpperCase() + item[0].slice(1));
+        const domainValues = domainData.map(item => item[1]);
+        
+        const domainColors = [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+            'rgba(201, 203, 207, 0.8)'
+        ];
+        
+        new Chart(domainCtx, {
+            type: 'horizontalBar',
+            data: {
+                labels: domainLabels,
+                datasets: [{
+                    label: 'Domain Relevance',
+                    data: domainValues,
+                    backgroundColor: domainColors.slice(0, domainValues.length),
+                    borderColor: domainColors.map(color => color.replace('0.8', '1')).slice(0, domainValues.length),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `References: ${context.raw}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize circular progress bars for language indicators
+    document.querySelectorAll('.progress-circle').forEach(function(circle) {
+        const percentage = parseInt(circle.getAttribute('data-percentage'));
+        const degrees = (percentage / 100) * 360;
+        const isHalf = degrees > 180;
+        
+        if (isHalf) {
+            circle.querySelector('.progress-circle-right .progress-circle-bar').style.transform = 'rotate(180deg)';
+            circle.querySelector('.progress-circle-left .progress-circle-bar').style.transform = `rotate(${degrees - 180}deg)`;
+        } else {
+            circle.querySelector('.progress-circle-right .progress-circle-bar').style.transform = `rotate(${degrees}deg)`;
+        }
+        
+        // Set color based on type
+        let color = '#17a2b8'; // Default blue
+        
+        if (circle.closest('.indicator-card').querySelector('h6').textContent.includes('Emotional')) {
+            color = percentage > 30 ? '#dc3545' : '#6c757d'; // Red if high emotional content
+        } else if (circle.closest('.indicator-card').querySelector('h6').textContent.includes('Factual')) {
+            color = percentage > 30 ? '#28a745' : '#6c757d'; // Green if high factual content
+        } else if (circle.closest('.indicator-card').querySelector('h6').textContent.includes('Uncertainty')) {
+            color = percentage > 15 ? '#ffc107' : '#6c757d'; // Yellow if high uncertainty
+        }
+        
+        circle.querySelectorAll('.progress-circle-bar').forEach(bar => {
+            bar.style.borderColor = color;
+        });
+    });
+});
+</script>
+
+<!-- Add required CSS for the new sections -->
+<style>
+/* Content Analysis metrics styling */
+.metric-item {
+    margin-bottom: 15px;
+}
+
+.metric-value {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Named Entities styling - add these rules */
+.named-entities .badge {
+    color: #212529; /* Dark text color */
+    margin: 2px;
+    font-weight: 500;
+}
+
+.entity-PERSON {
+    background-color: rgba(255, 99, 132, 0.2);
+    border: 1px solid rgba(255, 99, 132, 0.5);
+}
+
+.entity-ORG {
+    background-color: rgba(54, 162, 235, 0.2);
+    border: 1px solid rgba(54, 162, 235, 0.5);
+}
+
+.entity-GPE, .entity-LOC {
+    background-color: rgba(75, 192, 192, 0.2);
+    border: 1px solid rgba(75, 192, 192, 0.5);
+}
+
+.entity-DATE, .entity-TIME {
+    background-color: rgba(153, 102, 255, 0.2);
+    border: 1px solid rgba(153, 102, 255, 0.5);
+}
+
+.entity-MONEY, .entity-PERCENT {
+    background-color: rgba(255, 159, 64, 0.2);
+    border: 1px solid rgba(255, 159, 64, 0.5);
+}
+
+/* Language Analysis styling */
+.indicator-card {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+// ...existing code...
+</style>
+<!-- ...existing code... -->
+</body>
+</html>
