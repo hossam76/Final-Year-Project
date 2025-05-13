@@ -704,18 +704,24 @@ def explain_prediction(text, model_name='naive_bayes'):
 
 # Routes
 @app.route('/')
+@app.route('/')
 def home():
-    analysis_id = session.get('last_analysis_id')
-    saved_analysis = None
-    if (analysis_id):
-        try:
-            with open(f'analysis_data/{analysis_id}.json', 'r') as f:
-                saved_analysis = json.load(f)
+    try:
+        analysis_id = session.get('last_analysis_id')
+        saved_analysis = None
+
+        if analysis_id:
+            path = f'analysis_data/{analysis_id}.json'
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    saved_analysis = json.load(f)
                 session.pop('last_analysis_id', None)
-        except:
-            pass
-            
-    return render_template('index.html', saved_analysis=saved_analysis)
+
+        return render_template('index.html', saved_analysis=saved_analysis)
+
+    except Exception as e:
+        return render_template('index.html', error=f"Startup error: {str(e)}")
+
 
 @app.route('/hello')
 def hello():
