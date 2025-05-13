@@ -90,6 +90,10 @@ cache_config = {
 }
 cache = Cache(app, config=cache_config)
 
+@app.route("/ping")
+def ping():
+    return "🟢 App is alive!"
+
 # Create directory for analysis data if it doesn't exist
 os.makedirs('analysis_data', exist_ok=True)
 
