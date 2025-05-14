@@ -1,5 +1,3 @@
-# === app.py: Deployment-Ready Flask App ===
-
 import os
 import pickle
 import joblib
@@ -7,13 +5,10 @@ import re
 import numpy as np
 import pandas as pd
 import json
-import uuid
-import datetime
-import math
 from collections import Counter
-import requests
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup
+import base64
+from io import BytesIO
 
 # NLP libraries
 import nltk
@@ -25,31 +20,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from textblob import TextBlob
-import base64
-from io import BytesIO
 
-# Flask setup
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, send_file
-from flask_caching import Cache
-
-app = Flask(__name__, static_folder='static')
-app.secret_key = os.urandom(24)
-app.jinja_env.globals.update(min=min, max=max)
-
-cache = Cache(app, config={
-    "DEBUG": True,
-    "CACHE_TYPE": "SimpleCache",
-    "CACHE_DEFAULT_TIMEOUT": 300
-})
-
-os.makedirs('analysis_data', exist_ok=True)
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-lemmatizer = WordNetLemmatizer()
-stop_words = set(stopwords.words('english'))
-
-# === Conditional Imports ===
+# TensorFlow for LSTM
 try:
     import tensorflow as tf
     from tensorflow.keras.models import load_model
@@ -58,67 +30,71 @@ try:
 except ImportError:
     HAS_TENSORFLOW = False
 
-try:
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
-    HAS_SPACY = True
-except:
-    HAS_SPACY = False
-
+# LIME for explainability
 try:
     import lime
     from lime.lime_text import LimeTextExplainer
-    explainer = LimeTextExplainer(class_names=['fake', 'real'])
     HAS_LIME = True
-except:
+except ImportError:
     HAS_LIME = False
-    explainer = None
 
-# === Utilities ===
+# Flask
+from flask import Flask, request, jsonify, render_template
+
+app = Flask(__name__)
+
+# NLTK setup
+nltk.download('punkt', quiet=True)
+nltk.download('stopwords', quiet=True)
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words('english'))
+
+# Load models on demand
+vectorizer = joblib.load('vectorizer.pkl')
+nb_model = joblib.load('naive_bayes_model.pkl')
+rf_model = joblib.load('random_forest_model.pkl')
+lstm_model = load_model('lstm_model.h5') if HAS_TENSORFLOW else None
+with open('tokenizer.pkl', 'rb') as f:
+    tokenizer = pickle.load(f)
+
+# Text preprocessing
 def preprocess_text(text):
-    text = re.sub(r'[^a-zA-Z\s]', '', text.lower())
+    text = text.lower()
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
     tokens = word_tokenize(text)
-    return ' '.join([lemmatizer.lemmatize(word) for word in tokens if word not in stop_words])
+    return ' '.join([lemmatizer.lemmatize(t) for t in tokens if t not in stop_words])
 
-def predict_with_models(text):
-    processed = preprocess_text(text)
-    vectorizer = joblib.load('vectorizer.pkl')
-    nb_model = joblib.load('naive_bayes_model.pkl')
-    rf_model = joblib.load('random_forest_model.pkl')
-    vect = vectorizer.transform([processed])
+# Word cloud
+def generate_wordcloud(text):
+    words = [word.lower() for word in word_tokenize(text)
+             if word.isalpha() and word.lower() not in stop_words]
+    text_joined = ' '.join(words)
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text_joined)
+    img = BytesIO()
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.tight_layout(pad=0)
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(img.getvalue()).decode('utf-8')}"
 
-    result = {
-        'naive_bayes': {
-            'prediction': 'real' if nb_model.predict(vect)[0] == 1 else 'fake',
-            'confidence': float(nb_model.predict_proba(vect)[0].max())
-        },
-        'random_forest': {
-            'prediction': 'real' if rf_model.predict(vect)[0] == 1 else 'fake',
-            'confidence': float(rf_model.predict_proba(vect)[0].max())
-        }
+# LIME explanation
+def explain_prediction(text):
+    if not HAS_LIME:
+        return {'error': 'LIME not available'}
+    explainer = LimeTextExplainer(class_names=['fake', 'real'])
+    def predictor(texts):
+        preprocessed = [preprocess_text(t) for t in texts]
+        vect = vectorizer.transform(preprocessed)
+        return nb_model.predict_proba(vect)
+    explanation = explainer.explain_instance(text, predictor, num_features=10)
+    return {
+        'explanation': explanation.as_list(),
+        'html': explanation.as_html()
     }
 
-    if HAS_TENSORFLOW:
-        try:
-            tokenizer = pickle.load(open('tokenizer.pkl', 'rb'))
-            lstm_model = load_model('lstm_model.h5')
-            padded = pad_sequences(tokenizer.texts_to_sequences([processed]), maxlen=100)
-            pred = lstm_model.predict(padded)[0][0]
-            result['lstm'] = {
-                'prediction': 'real' if pred > 0.5 else 'fake',
-                'confidence': float(pred if pred > 0.5 else 1 - pred)
-            }
-        except:
-            pass
-
-    votes = [1 if result[m]['prediction'] == 'real' else 0 for m in result]
-    result['ensemble'] = {
-        'prediction': 'real' if sum(votes) > len(votes)//2 else 'fake',
-        'confidence': round(sum(result[m]['confidence'] for m in result if m != 'ensemble') / len(votes), 2)
-    }
-    return result
-
-# === Routes ===
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -129,51 +105,34 @@ def predict():
         data = request.get_json()
         text = data.get('text', '')
         model_choice = data.get('model', 'naive_bayes')
+
         if not text:
-            return jsonify({'error': 'Text is required'}), 400
+            return jsonify({'error': 'No text provided'}), 400
 
         processed = preprocess_text(text)
+        result = {}
 
         if model_choice == 'lstm' and HAS_TENSORFLOW:
-            tokenizer = pickle.load(open('tokenizer.pkl', 'rb'))
-            lstm_model = load_model('lstm_model.h5')
-            padded = pad_sequences(tokenizer.texts_to_sequences([processed]), maxlen=100)
-            prob = lstm_model.predict(padded)[0][0]
-            return jsonify({
-                'prediction': 'real' if prob > 0.5 else 'fake',
-                'confidence': float(prob)
-            })
+            seq = tokenizer.texts_to_sequences([processed])
+            pad = pad_sequences(seq, maxlen=100)
+            prob = lstm_model.predict(pad)[0][0]
+            result['prediction'] = 'real' if prob > 0.5 else 'fake'
+            result['confidence'] = float(prob)
+        else:
+            model = rf_model if model_choice == 'random_forest' else nb_model
+            vect = vectorizer.transform([processed])
+            pred = model.predict(vect)[0]
+            prob = model.predict_proba(vect)[0].max()
+            result['prediction'] = 'real' if pred == 1 else 'fake'
+            result['confidence'] = float(prob)
 
-        vectorizer = joblib.load('vectorizer.pkl')
-        model_file = 'random_forest_model.pkl' if model_choice == 'random_forest' else 'naive_bayes_model.pkl'
-        model = joblib.load(model_file)
-        vect = vectorizer.transform([processed])
-        pred = model.predict(vect)[0]
-        prob = model.predict_proba(vect)[0].max()
+        result['wordcloud'] = generate_wordcloud(text)
+        result['lime'] = explain_prediction(text)
 
-        return jsonify({
-            'prediction': 'real' if pred == 1 else 'fake',
-            'confidence': float(prob)
-        })
-
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/predict_ensemble', methods=['POST'])
-def predict_ensemble():
-    try:
-        data = request.get_json()
-        text = data.get('text', '')
-        if not text:
-            return jsonify({'error': 'Text is required'}), 400
-        result = predict_with_models(text)
-        return jsonify(result['ensemble'])
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/hello')
-def hello():
-    return "Hello, world!"
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
