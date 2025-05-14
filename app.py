@@ -10,7 +10,6 @@ import datetime
 import math  # Add math module import
 from collections import Counter
 import requests
-from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
 # NLP libraries
