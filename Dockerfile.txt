@@ -1,0 +1,33 @@
+# Use official Python base image
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set working directory
+WORKDIR /app
+
+# Copy all project files to the container
+COPY . /app/
+
+# Install system dependencies for nltk, spacy, newspaper3k
+RUN apt-get update && apt-get install -y \
+    build-essential python3-dev libxml2-dev libxslt1-dev libjpeg-dev zlib1g-dev \
+    && apt-get clean
+
+# Install Python dependencies
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download required NLTK data
+RUN python -m nltk.downloader punkt stopwords wordnet averaged_perceptron_tagger maxent_ne_chunker words
+
+# Download spaCy model
+RUN python -m spacy download en_core_web_sm
+
+# Expose port
+EXPOSE 8000
+
+# Start the app
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8000"]
